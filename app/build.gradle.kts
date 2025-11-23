@@ -83,4 +83,5 @@ dependencies {
     // Mapbox
     implementation(libs.android.ndk27)
     implementation(libs.maps.compose.ndk27)
+    implementation(libs.navigationcore.android.ndk27)
 }
