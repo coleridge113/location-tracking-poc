@@ -1,5 +1,6 @@
 package com.metromart.locationtrackignpoc
 
+import android.util.Log
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
@@ -23,6 +24,7 @@ import androidx.core.content.ContextCompat
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.common.location.Location
 import com.mapbox.geojson.Point
+import com.mapbox.geojson.LineString
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.MapView
@@ -169,13 +171,14 @@ fun NavigationMapScreen() {
     // Build the MapView inside Compose
     val avalu = Point.fromLngLat(121.0306, 14.5659)
     val rockwell = Point.fromLngLat(121.0367, 14.5636)
+    val snrMakati = Point.fromLngLat(121.018857, 14.540726)
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             MapView(ctx).apply {
                 mapboxMap.setCamera(
                     CameraOptions.Builder()
-                        .center(avalu)
+                        .center(snrMakati)
                         .zoom(14.0)
                         .pitch(5.0)
                         .build()
@@ -222,8 +225,8 @@ fun NavigationMapScreen() {
         mapboxNavigation.startReplayTripSession()
 
         // Request a simple 2-point route and push replay events
-        val origin = avalu
-        val destination = rockwell
+        val origin = snrMakati
+        val destination = avalu
 
         @SuppressLint("MissingPermission")
         fun requestRoute() {
@@ -244,6 +247,12 @@ fun NavigationMapScreen() {
                         routes: List<NavigationRoute>,
                         routerOrigin: String
                     ) {
+                        val geometry = routes.first().directionsRoute.geometry()
+                        val routePoints: List<Point> = geometry
+                            ?.let { LineString.fromPolyline(it, 6).coordinates() }
+                            ?: emptyList()
+
+                        Log.d("NavigationRoute", "Data points: ${routePoints.size}")
                         mapboxNavigation.setNavigationRoutes(routes)
 
                         // Simulate user movement along the route
