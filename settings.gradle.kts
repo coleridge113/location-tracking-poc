@@ -1,3 +1,6 @@
+import java.util.Properties
+import org.gradle.authentication.http.BasicAuthentication
+
 pluginManagement {
     repositories {
         google {
@@ -14,6 +17,19 @@ pluginManagement {
         }
     }
 }
+
+val mapboxDownloadsToken: String? = run {
+    val propsFile = file("local.properties")
+    if (propsFile.exists()) {
+        Properties().apply { load(propsFile.inputStream()) }
+            .getProperty("MAPBOX_DOWNLOADS_TOKEN")
+    } else {
+        // fallback to gradle.properties / env if you want
+        settings.extensions.extraProperties
+            .properties["MAPBOX_DOWNLOADS_TOKEN"] as String?
+    }
+}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -21,12 +37,12 @@ dependencyResolutionManagement {
         mavenCentral()
         maven {
             url = uri("https://api.mapbox.com/downloads/v2/releases/maven")
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
             credentials {
                 username = "mapbox"
-                password = providers.gradleProperty("MAPBOX_DOWNLOADS_TOKEN").get()
+                password = mapboxDownloadsToken ?: ""
+            }
+            authentication {
+                create<BasicAuthentication>("basic")
             }
         }
     }
