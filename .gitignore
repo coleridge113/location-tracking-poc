@@ -15,3 +15,5 @@
 local.properties
 server/node_modules
 server/.env
+node_modules
+kls_database.db

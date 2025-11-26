@@ -2,6 +2,9 @@ package com.metromart.locationtrackignpoc.presentation.mapboxdemo
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
@@ -15,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -27,8 +31,8 @@ import androidx.core.content.ContextCompat
 import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.common.MapboxOptions
 import com.mapbox.common.location.Location
-import com.mapbox.geojson.LineString
 import com.mapbox.geojson.Point
+import com.mapbox.geojson.utils.PolylineUtils
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.MapView
@@ -105,6 +109,9 @@ fun NavigationMapScreen() {
 
     MapboxOptions.accessToken = BuildConfig.MAPBOX_DOWNLOADS_TOKEN
 
+    val routeCoordinates = remember { mutableStateListOf<Point>() }
+    val traveledCoordinates = remember { mutableStateListOf<Point>() }    
+
     // Map + Navigation state holders
     val mapViewState = remember { mutableStateOf<MapView?>(null) }
     val navigationLocationProvider = remember { NavigationLocationProvider() }
@@ -176,6 +183,7 @@ fun NavigationMapScreen() {
     val ronac = Point.fromLngLat(121.040214, 14.607190)
     val cpark = Point.fromLngLat(121.018910, 14.578097)
     val golf = Point.fromLngLat(121.040689, 14.531111)
+    val clubhouse = Point.fromLngLat(121.04157921602086, 14.537736243699587) 
 
     AndroidView(
         modifier = Modifier.fillMaxSize(),
@@ -231,7 +239,7 @@ fun NavigationMapScreen() {
 
         // Request a simple 2-point route and push replay events
         val origin = snrMakati
-        val destination = golf
+        val destination = clubhouse
 
         @SuppressLint("MissingPermission")
         fun requestRoute() {
@@ -252,13 +260,33 @@ fun NavigationMapScreen() {
                         routes: List<NavigationRoute>,
                         routerOrigin: String
                     ) {
-                        val geometry = routes.first().directionsRoute.geometry()
-                        val routePoints: List<Point> = geometry
-                            ?.let { LineString.fromPolyline(it, 6).coordinates() }
-                            ?: emptyList()
-
-                        Log.d("NavigationRoute", "Data points: ${routePoints.size}")
                         mapboxNavigation.setNavigationRoutes(routes)
+
+                        val first = routes.first().directionsRoute
+                        val geometry = first.geometry()
+                        if (geometry != null) {
+                            val decoded: List<Point> = PolylineUtils.decode(geometry, 6)
+                            routeCoordinates.clear()
+                            routeCoordinates.addAll(decoded)
+                            Log.d("RoutePoints", "First 6: " +
+                                    routeCoordinates.take(6).joinToString { "${it.longitude()},${it.latitude()}" }
+                            )
+                            Log.d("RoutePoints", "Total route ponts: ${routeCoordinates.size}")
+                           val content = routeCoordinates.joinToString("\n") {
+                               "${it.latitude()},${it.longitude()}"
+                           }
+
+                           // Copy to clipboard instead of writing file
+//                           try {
+//                               val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+//                               val clip = ClipData.newPlainText("route_points", content)
+//                               clipboard.setPrimaryClip(clip)
+//                               Log.d("RoutePointsClipboard", "Copied ${routeCoordinates.size} points to clipboard.")
+//                               Toast.makeText(context, "Route points copied to clipboard", Toast.LENGTH_SHORT).show()
+//                           } catch (e: Exception) {
+//                               Log.e("RoutePointsClipboard", "Failed to copy", e)
+//                           }
+                        }
 
                         // Simulate user movement along the route
                         val replayData = replayRouteMapper

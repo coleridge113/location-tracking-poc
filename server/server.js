@@ -11,7 +11,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 
 function loadRoutePoints() {
-    const filePath = path.resolve(process.cwd(), 'location_data.txt');
+    const filePath = path.resolve(process.cwd(), 'location_data.txt1');
     try {
         const raw = fs.readFileSync(filePath, 'utf-8');
         return raw
@@ -53,13 +53,6 @@ io.on('connection', socket => {
     });
 });
 
-// Broadcast full route once at startup
-const fullRoutePayload = { type: 'route', coordinates: route, ts: Date.now() };
-io.emit('route', fullRoutePayload);
-ably.publishMessage(fullRoutePayload);
-pusher.publishMessage(fullRoutePayload);
-console.log(`Broadcast full route (${route.length} points)`);
-
 // Global interval that runs whether or not any clients are connected
 let idx = 0;
 setInterval(() => {
@@ -86,7 +79,7 @@ setInterval(() => {
 
     // 2) Ably & Pusher publish (Android listens here)
     ably.publishMessage(locationData);
-    pusher.publishMessage(locationData);
+    // pusher.publishMessage(locationData);
 
     console.log(`Broadcast point seq=${idx} lng=${lng} lat=${lat}`);
     idx++;

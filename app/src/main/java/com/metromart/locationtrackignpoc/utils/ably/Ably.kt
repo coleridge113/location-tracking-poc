@@ -4,7 +4,6 @@ import android.util.Log
 import com.metromart.locationtrackignpoc.BuildConfig
 import io.ably.lib.realtime.AblyRealtime
 import io.ably.lib.realtime.Channel
-import io.ably.lib.types.Message
 
 const val TAG = "Ably"
 

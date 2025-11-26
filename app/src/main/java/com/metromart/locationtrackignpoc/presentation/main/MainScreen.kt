@@ -202,17 +202,27 @@ fun NavigationReceiverMapScreen() {
     }
 
     val snrMakati = Point.fromLngLat(121.018857, 14.540726)
+    val initialPoint = snrMakati
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             MapView(ctx).apply {
                 mapboxMap.setCamera(
                     CameraOptions.Builder()
-                        .center(snrMakati)
+                        .center(initialPoint)
                         .zoom(14.0)
                         .pitch(5.0)
                         .build()
                 )
+
+                val startLoc = MapboxLocation.Builder()
+                .latitude(initialPoint.latitude())
+                .longitude(initialPoint.longitude())
+                .timestamp(System.currentTimeMillis())
+                .build()
+                navigationLocationProvider.changePosition(startLoc, emptyList())
+                lastLoc = startLoc
+
                 location.apply {
                     setLocationProvider(navigationLocationProvider)
                     locationPuck = createDefault2DPuck(withBearing = false)
