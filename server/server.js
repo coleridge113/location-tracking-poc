@@ -35,40 +35,48 @@ function loadRoutePoints() {
 const route = loadRoutePoints();
 console.log(`Loaded ${route.length} points from location_data.txt`);
 
+// Just log socket connections; they no longer control the loop
 io.on('connection', socket => {
     console.log('Client connected', socket.id);
-    socket.emit('route', { type: 'route', coordinates: route });
-    console.log(`Emitted full route (${route.length} points)`);
-
-    let idx = 0;
-    const interval = setInterval(() => {
-        if (idx >= route.length) {
-            clearInterval(interval);
-            console.log('Finished streaming points');
-            return;
-        }
-        const [lng, lat] = route[idx];
-        const locationData = {
-            type: 'point',
-            seq: idx,
-            lng,
-            lat,
-            ts: Date.now()
-        } 
-
-        ably.publishMessage(locationData)
-        pusher.publishMessage(locationData)
-
-        socket.emit('point', locationData);
-        console.log(`Emitted point seq=${idx} lng=${lng} lat=${lat}`);
-        idx++;
-    }, 1000);
-
     socket.on('disconnect', () => {
-        clearInterval(interval);
         console.log('Client disconnected', socket.id);
     });
 });
+
+// Broadcast full route once at startup
+const fullRoutePayload = { type: 'route', coordinates: route, ts: Date.now() };
+io.emit('route', fullRoutePayload);
+ably.publishMessage(fullRoutePayload);
+pusher.publishMessage(fullRoutePayload);
+console.log(`Broadcast full route (${route.length} points)`);
+
+// Global interval that runs whether or not any clients are connected
+let idx = 0;
+setInterval(() => {
+    if (idx >= route.length) {
+        // stop or loop; here we just stop emitting
+        return;
+    }
+
+    const [lng, lat] = route[idx];
+    const locationData = {
+        type: 'point',
+        seq: idx,
+        lng,
+        lat,
+        ts: Date.now()
+    };
+
+    // 1) Socket.IO broadcast to any connected clients
+    io.emit('point', locationData);
+
+    // 2) Ably & Pusher publish (Android listens here)
+    ably.publishMessage(locationData);
+    pusher.publishMessage(locationData);
+
+    console.log(`Broadcast point seq=${idx} lng=${lng} lat=${lat}`);
+    idx++;
+}, 1000);
 
 app.get('/', (_req, res) => res.send('Route emitter running'));
 
