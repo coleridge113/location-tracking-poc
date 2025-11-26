@@ -26,9 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
-import com.mapbox.api.directions.v5.models.RouteOptions
 import com.mapbox.common.MapboxOptions
-import com.mapbox.geojson.LineString
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.EdgeInsets
@@ -37,32 +35,20 @@ import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.locationcomponent.createDefault2DPuck
 import com.mapbox.maps.plugin.locationcomponent.location
 import com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
-import com.mapbox.navigation.base.extensions.applyDefaultNavigationOptions
 import com.mapbox.navigation.base.options.NavigationOptions
-import com.mapbox.navigation.base.route.NavigationRoute
-import com.mapbox.navigation.base.route.NavigationRouterCallback
-import com.mapbox.navigation.base.route.RouterFailure
 import com.mapbox.navigation.core.MapboxNavigationProvider
-import com.mapbox.navigation.core.replay.route.ReplayProgressObserver
-import com.mapbox.navigation.core.replay.route.ReplayRouteMapper
-import com.mapbox.navigation.core.trip.session.LocationMatcherResult
-import com.mapbox.navigation.core.trip.session.LocationObserver
 import com.mapbox.navigation.ui.maps.camera.NavigationCamera
 import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
 import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
-import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
-import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
-import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
-import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
 import com.metromart.locationtrackignpoc.BuildConfig
 import com.metromart.locationtrackignpoc.model.LocationData
 import com.metromart.locationtrackignpoc.utils.ably.Ably
 import io.ably.lib.realtime.Channel
-import com.mapbox.common.location.Location as MapboxLocation
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.mapbox.common.location.Location as MapboxLocation
 
 @Composable
 fun MainScreen() {
@@ -115,63 +101,18 @@ fun NavigationReceiverMapScreen() {
     val density = LocalDensity.current
     val mapViewState = remember { mutableStateOf<MapView?>(null) }
     val navigationLocationProvider = remember { NavigationLocationProvider() }
-    val replayRouteMapper = remember { ReplayRouteMapper() }
     var viewportDataSource by remember { mutableStateOf<MapboxNavigationViewportDataSource?>(null) }
     var navigationCamera by remember { mutableStateOf<NavigationCamera?>(null) }
-    val routeLineApi by remember {
-        mutableStateOf(MapboxRouteLineApi(MapboxRouteLineApiOptions.Builder().build()))
-    }
-    val routeLineView by remember {
-        mutableStateOf(
-            MapboxRouteLineView(
-                MapboxRouteLineViewOptions.Builder(context).build()
-            )
-        )
-    }
 
-    val routesObserver = remember {
-        com.mapbox.navigation.core.directions.session.RoutesObserver { routeUpdate ->
-            val mv = mapViewState.value ?: return@RoutesObserver
-            if (routeUpdate.navigationRoutes.isNotEmpty()) {
-                // draw the route
-                routeLineApi.setNavigationRoutes(routeUpdate.navigationRoutes) { drawData ->
-                    mv.mapboxMap.style?.let { style ->
-                        routeLineView.renderRouteDrawData(style, drawData)
-                    }
-                }
-
-                // update viewport and go to overview
-                viewportDataSource?.onRouteChanged(routeUpdate.navigationRoutes.first())
-                viewportDataSource?.evaluate()
-                navigationCamera?.requestNavigationCameraToOverview()
-            }
-        }
-    }
-
+    // we only need MapboxNavigation for NavigationCamera & viewport helpers (no replay)
     val mapboxNavigation = remember {
         MapboxNavigationProvider.create(
             NavigationOptions.Builder(context).build()
         )
     }
 
-    val locationObserver = remember {
-        object : LocationObserver {
-            override fun onNewRawLocation(rawLocation: MapboxLocation) {}
-
-            override fun onNewLocationMatcherResult(locationMatcherResult: LocationMatcherResult) {
-                val enhanced = locationMatcherResult.enhancedLocation
-                // navigationLocationProvider.changePosition(
-                //     location = enhanced,
-                //     keyPoints = locationMatcherResult.keyPoints
-                // )
-                // viewportDataSource?.onLocationChanged(enhanced)
-                // viewportDataSource?.evaluate()
-                // navigationCamera?.requestNavigationCameraToFollowing()
-            }
-        }
-    }
-
     var lastLoc by remember { mutableStateOf<MapboxLocation?>(null) }
+    val uiScope = remember { CoroutineScope(Dispatchers.Main) }
 
     LaunchedEffect(Unit) {
         val channelName = "ably-channel"
@@ -185,8 +126,6 @@ fun NavigationReceiverMapScreen() {
                     "parsed: lat=${loc.latitude}, lng=${loc.longitude}, ts=${loc.timestamp}"
                 )
 
-                val point = Point.fromLngLat(loc.longitude, loc.latitude)
-
                 val newLoc = MapboxLocation.Builder()
                     .latitude(loc.latitude)
                     .longitude(loc.longitude)
@@ -195,16 +134,13 @@ fun NavigationReceiverMapScreen() {
 
                 (context as? Activity)?.runOnUiThread {
                     val from = lastLoc
-                    if (from == null) {
-                        // update puck
-                        navigationLocationProvider.changePosition(
-                            newLoc,
-                            emptyList()
-                        )
-                    } else {
-                        // launch a coroutine to animate
-                        val scope = CoroutineScope(Dispatchers.Main)
-                        scope.launch {
+
+                    uiScope.launch {
+                        if (from == null) {
+                            // first fix: just set position
+                            navigationLocationProvider.changePosition(newLoc, emptyList())
+                        } else {
+                            // interpolate between points for smooth puck movement
                             val steps = 15
                             for (i in 1..steps) {
                                 val t = i / steps.toDouble()
@@ -218,20 +154,14 @@ fun NavigationReceiverMapScreen() {
                                 delay(60)
                             }
                         }
+
+                        lastLoc = newLoc
+
+                        // let NavigationCamera handle camera follow
+                        viewportDataSource?.onLocationChanged(newLoc)
+                        viewportDataSource?.evaluate()
+                        navigationCamera?.requestNavigationCameraToFollowing()
                     }
-                    lastLoc = newLoc
-
-                    viewportDataSource?.onLocationChanged(newLoc)
-                    viewportDataSource?.evaluate()
-                    navigationCamera?.requestNavigationCameraToFollowing()
-
-                    // follow with camera
-                    // mapViewState.value?.camera?.easeTo(
-                    //     CameraOptions.Builder()
-                    //     .center(point)
-                    //     .zoom(16.0)
-                    //     .build(),
-                    // )
                 }
             } catch (t: Throwable) {
                 Log.e("AblyChannel", "Error in message listener", t)
@@ -241,10 +171,8 @@ fun NavigationReceiverMapScreen() {
         Ably.subscribeToChannel(channelName, listener)
     }
 
-
-    val avalu = Point.fromLngLat(121.0306, 14.5659)
-    val rockwell = Point.fromLngLat(121.0367, 14.5636)
     val snrMakati = Point.fromLngLat(121.018857, 14.540726)
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
@@ -256,15 +184,16 @@ fun NavigationReceiverMapScreen() {
                         .pitch(5.0)
                         .build()
                 )
-                // Enable location puck using NavigationLocationProvider
+
+                // Use Ably-driven NavigationLocationProvider for the puck
                 location.apply {
                     setLocationProvider(navigationLocationProvider)
                     locationPuck = createDefault2DPuck(withBearing = false)
                     enabled = true
                 }
+
                 mapViewState.value = this
 
-                // Viewport, padding, and camera
                 viewportDataSource = MapboxNavigationViewportDataSource(mapboxMap).also { vds ->
                     val top = with(density) { 180.dp.toPx().toDouble() }
                     val left = with(density) { 40.dp.toPx().toDouble() }
@@ -279,73 +208,16 @@ fun NavigationReceiverMapScreen() {
     )
 
     DisposableEffect(Unit) {
-        // Register observers and kick off a replayed trip session
-        val mv = mapViewState.value
-        if (mv != null) {
-            // ensure the nice default puck
-            mv.location.apply {
-                setLocationProvider(navigationLocationProvider)
-                locationPuck = createDefault2DPuck(withBearing = false)
-                enabled = true
-            }
+        // ensure puck stays configured with our provider
+        mapViewState.value?.location?.apply {
+            setLocationProvider(navigationLocationProvider)
+            locationPuck = createDefault2DPuck(withBearing = false)
+            enabled = true
         }
-
-        val replayProgressObserver = ReplayProgressObserver(mapboxNavigation.mapboxReplayer)
-        mapboxNavigation.registerRoutesObserver(routesObserver)
-        mapboxNavigation.registerLocationObserver(locationObserver)
-        mapboxNavigation.registerRouteProgressObserver(replayProgressObserver)
-        mapboxNavigation.startReplayTripSession()
-
-        // Request a simple 2-point route and push replay events
-        val origin = snrMakati
-        val destination = avalu
-
-        @SuppressLint("MissingPermission")
-        fun requestRoute() {
-            mapboxNavigation.requestRoutes(
-                RouteOptions.builder()
-                    .applyDefaultNavigationOptions()
-                    .coordinatesList(listOf(origin, destination))
-                    .layersList(listOf(mapboxNavigation.getZLevel(), null))
-                    .build(),
-                object : NavigationRouterCallback {
-                    override fun onCanceled(routeOptions: RouteOptions, routerOrigin: String) {}
-                    override fun onFailure(
-                        reasons: List<RouterFailure>,
-                        routeOptions: RouteOptions
-                    ) {}
-
-                    override fun onRoutesReady(
-                        routes: List<NavigationRoute>,
-                        routerOrigin: String
-                    ) {
-                        val geometry = routes.first().directionsRoute.geometry()
-                        val routePoints: List<Point> = geometry
-                            ?.let { LineString.fromPolyline(it, 6).coordinates() }
-                            ?: emptyList()
-
-                        Log.d("NavigationRoute", "Data points: ${routePoints.size}")
-                        mapboxNavigation.setNavigationRoutes(routes)
-
-                        // Simulate user movement along the route
-                        // val replayData = replayRouteMapper
-                        //     .mapDirectionsRouteGeometry(routes.first().directionsRoute)
-                        // mapboxNavigation.mapboxReplayer.pushEvents(replayData)
-                        // mapboxNavigation.mapboxReplayer.seekTo(replayData.first())
-                        // mapboxNavigation.mapboxReplayer.play()
-                    }
-                }
-            )
-        }
-
-        requestRoute()
 
         onDispose {
-            // Unregister and clean up
-            mapboxNavigation.unregisterRoutesObserver(routesObserver)
-            mapboxNavigation.unregisterLocationObserver(locationObserver)
             mapboxNavigation.stopTripSession()
-            MapboxNavigationProvider.destroy() // releases the singleton instance
+            MapboxNavigationProvider.destroy()
             mapViewState.value = null
         }
     }
