@@ -100,6 +100,7 @@ fun NavigationReceiverMapScreen() {
 
     val context = LocalContext.current
     val density = LocalDensity.current
+    val realtimeThresholdMs = 2_000L
     val mapViewState = remember { mutableStateOf<MapView?>(null) }
     val navigationLocationProvider = remember { NavigationLocationProvider() }
     var viewportDataSource by remember { mutableStateOf<MapboxNavigationViewportDataSource?>(null) }
@@ -117,6 +118,7 @@ fun NavigationReceiverMapScreen() {
     val bufferedPoints = remember { mutableStateListOf<LocationData>() }
     var lastServerTs by remember { mutableStateOf<Long?>(null) }
     var isReplaying by remember { mutableStateOf(false) }
+    var latestServerTs by remember { mutableStateOf<Long?>(null) }
 
     // 1) Ably listener: ONLY enqueue and record timestamps
     LaunchedEffect(Unit) {
@@ -133,6 +135,7 @@ fun NavigationReceiverMapScreen() {
 
                 // just enqueue, do not move the puck directly here
                 bufferedPoints += loc
+                latestServerTs = loc.timestamp
 
                 // update lastServerTs to detect gaps
                 lastServerTs = loc.timestamp
@@ -147,32 +150,39 @@ fun NavigationReceiverMapScreen() {
     // 2) Processor loop: consume bufferedPoints in order and animate
     LaunchedEffect(Unit) {
         while (true) {
-            // wait until we have at least one point to process
             if (bufferedPoints.isEmpty()) {
-                delay(50)
+                delay(20)
                 continue
             }
 
             val loc = bufferedPoints.removeAt(0)
 
             val newLoc = MapboxLocation.Builder()
-                .latitude(loc.latitude)
-                .longitude(loc.longitude)
-                .timestamp(loc.timestamp)
-                .build()
+            .latitude(loc.latitude)
+            .longitude(loc.longitude)
+            .timestamp(loc.timestamp)
+            .build()
 
             val from = lastLoc
-            val hasGap = lastLoc != null &&
-                    (loc.timestamp - (lastLoc?.timestamp ?: loc.timestamp)) > 3_000L
 
-            // choose animation parameters based on gap (offline catch-up vs normal)
-            val (steps, stepDelay) = if (hasGap) {
-                8 to 30L   // faster catch-up
-            } else {
-                15 to 60L  // normal smooth
+            // How far behind this point is compared to the latest we've seen
+            val behindMs = (latestServerTs ?: loc.timestamp) - loc.timestamp
+            val isBacklog = behindMs > realtimeThresholdMs
+
+            // Also detect big jump between lastLoc and this loc (true offline gap)
+            val hasBigGap = lastLoc != null &&
+            (loc.timestamp - (lastLoc?.timestamp ?: loc.timestamp)) > 3_000L
+
+            // If we have *a lot* of backlog (e.g. > 10s), snap instead of animating
+            val hugeBacklog = behindMs > 10_000L
+
+            val (steps, stepDelay) = when {
+                hugeBacklog -> 1 to 0L        // snap through very old data
+                isBacklog || hasBigGap -> 4 to 10L   // fast catch-up
+                else -> 15 to 60L             // normal smooth
             }
 
-            if (from == null) {
+            if (from == null || steps <= 1) {
                 navigationLocationProvider.changePosition(newLoc, emptyList())
             } else {
                 animateBetween(
@@ -185,7 +195,6 @@ fun NavigationReceiverMapScreen() {
             }
             lastLoc = newLoc
 
-            // camera follow via NavigationCamera
             viewportDataSource?.onLocationChanged(newLoc)
             viewportDataSource?.evaluate()
             navigationCamera?.requestNavigationCameraToFollowing()

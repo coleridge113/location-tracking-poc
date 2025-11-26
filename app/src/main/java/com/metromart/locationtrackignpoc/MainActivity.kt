@@ -9,8 +9,8 @@ import com.metromart.locationtrackignpoc.presentation.main.MainScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MainScreen() }
-        // setContent { MapboxComposeApp() }
+        // setContent { MainScreen() }
+        setContent { MapboxComposeApp() }
     }
 }
 

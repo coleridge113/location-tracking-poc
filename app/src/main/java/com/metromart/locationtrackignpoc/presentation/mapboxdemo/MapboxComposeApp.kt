@@ -172,6 +172,11 @@ fun NavigationMapScreen() {
     val avalu = Point.fromLngLat(121.0306, 14.5659)
     val rockwell = Point.fromLngLat(121.0367, 14.5636)
     val snrMakati = Point.fromLngLat(121.018857, 14.540726)
+    val commonGround = Point.fromLngLat(121.036668, 14.563586)
+    val ronac = Point.fromLngLat(121.040214, 14.607190)
+    val cpark = Point.fromLngLat(121.018910, 14.578097)
+    val golf = Point.fromLngLat(121.040689, 14.531111)
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
@@ -226,7 +231,7 @@ fun NavigationMapScreen() {
 
         // Request a simple 2-point route and push replay events
         val origin = snrMakati
-        val destination = avalu
+        val destination = golf
 
         @SuppressLint("MissingPermission")
         fun requestRoute() {
