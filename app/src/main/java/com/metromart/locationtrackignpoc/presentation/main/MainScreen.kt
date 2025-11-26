@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -113,7 +114,11 @@ fun NavigationReceiverMapScreen() {
 
     var lastLoc by remember { mutableStateOf<MapboxLocation?>(null) }
     val uiScope = remember { CoroutineScope(Dispatchers.Main) }
+    val bufferedPoints = remember { mutableStateListOf<LocationData>() }
+    var lastServerTs by remember { mutableStateOf<Long?>(null) }
+    var isReplaying by remember { mutableStateOf(false) }
 
+    // 1) Ably listener: ONLY enqueue and record timestamps
     LaunchedEffect(Unit) {
         val channelName = "ably-channel"
         val listener = Channel.MessageListener { message ->
@@ -123,46 +128,14 @@ fun NavigationReceiverMapScreen() {
 
                 Log.d(
                     "AblyChannel",
-                    "parsed: lat=${loc.latitude}, lng=${loc.longitude}, ts=${loc.timestamp}"
+                    "parsed: seq=${loc.seq} lat=${loc.latitude}, lng=${loc.longitude}, ts=${loc.timestamp}"
                 )
 
-                val newLoc = MapboxLocation.Builder()
-                    .latitude(loc.latitude)
-                    .longitude(loc.longitude)
-                    .timestamp(loc.timestamp)
-                    .build()
+                // just enqueue, do not move the puck directly here
+                bufferedPoints += loc
 
-                (context as? Activity)?.runOnUiThread {
-                    val from = lastLoc
-
-                    uiScope.launch {
-                        if (from == null) {
-                            // first fix: just set position
-                            navigationLocationProvider.changePosition(newLoc, emptyList())
-                        } else {
-                            // interpolate between points for smooth puck movement
-                            val steps = 15
-                            for (i in 1..steps) {
-                                val t = i / steps.toDouble()
-                                val lat = from.latitude + (newLoc.latitude - from.latitude) * t
-                                val lng = from.longitude + (newLoc.longitude - from.longitude) * t
-                                val stepLoc = MapboxLocation.Builder()
-                                    .latitude(lat)
-                                    .longitude(lng)
-                                    .build()
-                                navigationLocationProvider.changePosition(stepLoc, emptyList())
-                                delay(60)
-                            }
-                        }
-
-                        lastLoc = newLoc
-
-                        // let NavigationCamera handle camera follow
-                        viewportDataSource?.onLocationChanged(newLoc)
-                        viewportDataSource?.evaluate()
-                        navigationCamera?.requestNavigationCameraToFollowing()
-                    }
-                }
+                // update lastServerTs to detect gaps
+                lastServerTs = loc.timestamp
             } catch (t: Throwable) {
                 Log.e("AblyChannel", "Error in message listener", t)
             }
@@ -171,8 +144,55 @@ fun NavigationReceiverMapScreen() {
         Ably.subscribeToChannel(channelName, listener)
     }
 
-    val snrMakati = Point.fromLngLat(121.018857, 14.540726)
+    // 2) Processor loop: consume bufferedPoints in order and animate
+    LaunchedEffect(Unit) {
+        while (true) {
+            // wait until we have at least one point to process
+            if (bufferedPoints.isEmpty()) {
+                delay(50)
+                continue
+            }
 
+            val loc = bufferedPoints.removeAt(0)
+
+            val newLoc = MapboxLocation.Builder()
+                .latitude(loc.latitude)
+                .longitude(loc.longitude)
+                .timestamp(loc.timestamp)
+                .build()
+
+            val from = lastLoc
+            val hasGap = lastLoc != null &&
+                    (loc.timestamp - (lastLoc?.timestamp ?: loc.timestamp)) > 3_000L
+
+            // choose animation parameters based on gap (offline catch-up vs normal)
+            val (steps, stepDelay) = if (hasGap) {
+                8 to 30L   // faster catch-up
+            } else {
+                15 to 60L  // normal smooth
+            }
+
+            if (from == null) {
+                navigationLocationProvider.changePosition(newLoc, emptyList())
+            } else {
+                animateBetween(
+                    from = from,
+                    to = newLoc,
+                    provider = navigationLocationProvider,
+                    steps = steps,
+                    stepDelayMs = stepDelay
+                )
+            }
+            lastLoc = newLoc
+
+            // camera follow via NavigationCamera
+            viewportDataSource?.onLocationChanged(newLoc)
+            viewportDataSource?.evaluate()
+            navigationCamera?.requestNavigationCameraToFollowing()
+        }
+    }
+
+    val snrMakati = Point.fromLngLat(121.018857, 14.540726)
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
@@ -184,14 +204,11 @@ fun NavigationReceiverMapScreen() {
                         .pitch(5.0)
                         .build()
                 )
-
-                // Use Ably-driven NavigationLocationProvider for the puck
                 location.apply {
                     setLocationProvider(navigationLocationProvider)
                     locationPuck = createDefault2DPuck(withBearing = false)
                     enabled = true
                 }
-
                 mapViewState.value = this
 
                 viewportDataSource = MapboxNavigationViewportDataSource(mapboxMap).also { vds ->
@@ -220,5 +237,25 @@ fun NavigationReceiverMapScreen() {
             MapboxNavigationProvider.destroy()
             mapViewState.value = null
         }
+    }
+}
+
+private suspend fun animateBetween(
+    from: MapboxLocation,
+    to: MapboxLocation,
+    provider: NavigationLocationProvider,
+    steps: Int = 15,
+    stepDelayMs: Long = 60L,
+) {
+    for (i in 1..steps) {
+        val t = i / steps.toDouble()
+        val lat = from.latitude + (to.latitude - from.latitude) * t
+        val lng = from.longitude + (to.longitude - from.longitude) * t
+        val stepLoc = MapboxLocation.Builder()
+            .latitude(lat)
+            .longitude(lng)
+            .build()
+        provider.changePosition(stepLoc, emptyList())
+        kotlinx.coroutines.delay(stepDelayMs)
     }
 }
