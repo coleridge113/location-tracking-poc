@@ -35,6 +35,16 @@ function loadRoutePoints() {
 const route = loadRoutePoints();
 console.log(`Loaded ${route.length} points from location_data.txt`);
 
+// Track whether we are currently "online" for publishing
+let publishing = true;
+
+// Simple endpoint to toggle publishing from the terminal (or Postman)
+app.post('/toggle-publishing', (_req, res) => {
+    publishing = !publishing;
+    console.log(`*** publishing = ${publishing} ***`);
+    res.json({ publishing });
+});
+
 // Just log socket connections; they no longer control the loop
 io.on('connection', socket => {
     console.log('Client connected', socket.id);
@@ -53,9 +63,13 @@ console.log(`Broadcast full route (${route.length} points)`);
 // Global interval that runs whether or not any clients are connected
 let idx = 0;
 setInterval(() => {
-    if (idx >= route.length) {
-        // stop or loop; here we just stop emitting
+    // "network down" simulation: we stop publishing while keeping server & Zoom online
+    if (!publishing) {
         return;
+    }
+
+    if (idx >= route.length) {
+        return; // finished
     }
 
     const [lng, lat] = route[idx];
