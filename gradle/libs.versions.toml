@@ -1,4 +1,5 @@
 [versions]
+ablyJava = "1.4.2"
 agp = "8.13.1"
 androidNdk27 = "11.16.6"
 androidNdk27Version = "3.17.0-rc.1"
@@ -21,6 +22,7 @@ mapsComposeNdk27 = "11.16.6"
 navigationDynamicFeaturesFragment = "2.9.6"
 
 [libraries]
+ably-java = { module = "io.ably:ably-java", version.ref = "ablyJava" }
 android-ndk27 = { module = "com.mapbox.maps:android-ndk27", version.ref = "androidNdk27" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationDynamicFeaturesFragment" }

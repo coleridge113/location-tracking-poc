@@ -3,7 +3,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import fs from 'fs';
 import path from 'path';
-import * as ably from './utils/ably.js'
+import * as ably from './utils/ably.js';
+import * as pusher from './utils/pusher.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -56,7 +57,7 @@ io.on('connection', socket => {
         } 
 
         ably.publishMessage(locationData)
-
+        pusher.publishMessage(locationData)
         socket.emit('point', locationData);
         console.log(`Emitted point seq=${idx} lng=${lng} lat=${lat}`);
         idx++;
