@@ -1,131 +1,146 @@
 package com.metromart.locationtrackignpoc.presentation.main
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.util.Log
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.flowWithLifecycle
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.EdgeInsets
-import com.mapbox.maps.extension.compose.MapboxMap
-import kotlinx.coroutines.flow.collectLatest
-import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
-import com.mapbox.maps.extension.compose.MapEffect
-import com.mapbox.maps.plugin.PuckBearing
-import com.mapbox.maps.plugin.locationcomponent.createDefault2DPuck
+import com.mapbox.maps.MapView
+import com.mapbox.maps.plugin.LocationPuck2D
+import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.locationcomponent.location
-import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener
-import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateOptions
-import com.mapbox.maps.plugin.viewport.data.FollowPuckViewportStateBearing
-import com.mapbox.maps.dsl.cameraOptions
+import com.mapbox.navigation.core.replay.route.ReplayRouteMapper
+import com.mapbox.navigation.ui.maps.camera.NavigationCamera
+import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
+import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
+import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
+import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineApiOptions
+import com.mapbox.navigation.ui.maps.route.line.model.MapboxRouteLineViewOptions
+import com.metromart.locationtrackignpoc.BuildConfig
+import com.metromart.locationtrackignpoc.utils.ably.Ably
+import io.ably.lib.realtime.Channel
 
-internal val LocalSafeArea = compositionLocalOf { PaddingValues(0.dp) }
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(
-    navController: NavController
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Mapbox SDK",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 20.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceTint
-                )
-            )
-        },
-        modifier = Modifier.padding(LocalSafeArea.current)
-    ) { paddingValues ->
-        val mapViewportState = rememberMapViewportState()
-        MapboxMap(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            mapViewportState = mapViewportState
-        ) {
-            MapEffect(Unit) { mapView ->
-                mapView.location.updateSettings {
-                    locationPuck = createDefault2DPuck(withBearing = true)
-                    enabled = true
-                    puckBearing = PuckBearing.COURSE
-                    puckBearingEnabled = true
-                }
+fun MainScreen() {
+    val context = LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
 
-                val listener = OnIndicatorPositionChangedListener { point -> 
-                    Log.d("MapView", "$point")
-                    mapViewportState.flyTo(
-                        cameraOptions = CameraOptions.Builder()
-                            .center(point)
-                            .zoom(16.0)
-                            .build()
-                    )
-                }
-                mapView.location.addOnIndicatorPositionChangedListener(listener)
-            }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        hasPermission = perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (!hasPermission) {
+            Toast.makeText(
+                context,
+                "Location permission denied. Enable it in settings.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasPermission) {
+            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))
+        }
+    }
+
+    if (hasPermission) {
+        NavigationReceiverMapScreen()
+    } else {
+        Box(Modifier.fillMaxSize()) {
+            Button(onClick = {
+                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))
+            }) { Text("Grant location permission") }
         }
     }
 }
 
-@Preview
 @Composable
-fun PreviewMainScreen() {
-    val navController = rememberNavController()
-    MainScreen(navController)
+fun NavigationReceiverMapScreen() {
+    MapboxOptions.accessToken = BuildConfig.MAPBOX_DOWNLOADS_TOKEN
+    
+    LaunchedEffect(Unit) {
+        val listener = Channel.MessageListener { message ->
+            Log.d("AblyChannel", "${message.data}")
+        }
+        Ably.subscribeToChannel("ably-channel", listener)
+        Ably.publishToChannel("ably-channel")
+    }
+
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val mapViewState = remember { mutableStateOf<MapView?>(null) }
+    val navigationLocationProvider = remember { NavigationLocationProvider() }
+    val replayRouteMapper = remember { ReplayRouteMapper() }
+    var viewportDataSource by remember { mutableStateOf<MapboxNavigationViewportDataSource?>(null) }
+    var navigationCamera by remember { mutableStateOf<NavigationCamera?>(null) }
+    val routeLineApi by remember {
+        mutableStateOf(MapboxRouteLineApi(MapboxRouteLineApiOptions.Builder().build()))
+    }
+    val routeLineView by remember {
+        mutableStateOf(
+            MapboxRouteLineView(
+                MapboxRouteLineViewOptions.Builder(context).build()
+            )
+        )
+    }
+
+    val avalu = Point.fromLngLat(121.0306, 14.5659)
+    val rockwell = Point.fromLngLat(121.0367, 14.5636)
+    val snrMakati = Point.fromLngLat(121.018857, 14.540726)
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { ctx ->
+            MapView(ctx).apply {
+                mapboxMap.setCamera(
+                    CameraOptions.Builder()
+                        .center(snrMakati)
+                        .zoom(14.0)
+                        .pitch(5.0)
+                        .build()
+                )
+                // Enable location puck using NavigationLocationProvider
+                location.apply {
+                    setLocationProvider(navigationLocationProvider)
+                    locationPuck = LocationPuck2D() // replaced later with default 2D puck as well
+                    enabled = true
+                }
+                mapViewState.value = this
+
+                // Viewport, padding, and camera
+                viewportDataSource = MapboxNavigationViewportDataSource(mapboxMap).also { vds ->
+                    val top = with(density) { 180.dp.toPx().toDouble() }
+                    val left = with(density) { 40.dp.toPx().toDouble() }
+                    val bottom = with(density) { 500.dp.toPx().toDouble() }
+                    val right = with(density) { 40.dp.toPx().toDouble() }
+                    vds.followingPadding = EdgeInsets(top, left, bottom, right)
+                }
+                navigationCamera = NavigationCamera(mapboxMap, camera, viewportDataSource!!)
+            }
+        },
+        update = { /* no-op */ }
+    )
 }

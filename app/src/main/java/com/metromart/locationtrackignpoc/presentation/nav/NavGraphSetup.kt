@@ -45,7 +45,7 @@ fun NavGraphSetup(
             }
         ) {
             composable<Routes.MainRoute> {
-                MainScreen(navController)
+                MainScreen()
             }
         } 
     }

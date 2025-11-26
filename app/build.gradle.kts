@@ -25,8 +25,21 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "MAPBOX_ACCESS_TOKEN", "\"${localProps["MAPBOX_ACCESS_TOKEN"]}\"")
-        buildConfigField("String", "MAPBOX_DOWNLOADS_TOKEN", "\"${localProps["MAPBOX_DOWNLOADS_TOKEN"]}\"")
+        buildConfigField(
+            "String",
+            "MAPBOX_ACCESS_TOKEN",
+            "\"${localProps["MAPBOX_ACCESS_TOKEN"]}\""
+        )
+        buildConfigField(
+            "String",
+            "MAPBOX_DOWNLOADS_TOKEN",
+            "\"${localProps["MAPBOX_DOWNLOADS_TOKEN"]}\""
+        )
+        buildConfigField(
+            "String",
+            "ABLY_API_KEY",
+            "\"${localProps["ABLY_API_KEY"]}\""
+        )
     }
 
     buildTypes {
@@ -94,4 +107,7 @@ dependencies {
     implementation(libs.android.ndk27)
     implementation(libs.maps.compose.ndk27)
     implementation(libs.navigationcore.android.ndk27)
+
+    // Ably
+    implementation(libs.ably.java)
 }
