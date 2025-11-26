@@ -58,6 +58,7 @@ io.on('connection', socket => {
 
         ably.publishMessage(locationData)
         pusher.publishMessage(locationData)
+
         socket.emit('point', locationData);
         console.log(`Emitted point seq=${idx} lng=${lng} lat=${lat}`);
         idx++;

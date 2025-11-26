@@ -39,15 +39,5 @@ object Ably {
         channel.subscribe(listener)
 
     }
-
-    fun publishToChannel(channelName: String) {
-        val channel = realtime.channels.get(channelName)
-        channel.publish(
-            Message(
-                "ably-route",
-                "Hello Android!"
-            )
-        )
-    }
 }
 
