@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
@@ -40,6 +41,31 @@ android {
             "ABLY_API_KEY",
             "\"${localProps["ABLY_API_KEY"]}\""
         )
+        buildConfigField(
+            "String",
+            "PUSHER_APP_ID",
+            "\"${localProps["PUSHER_APP_ID"]}\""
+        )
+        buildConfigField(
+            "String",
+            "PUSHER_KEY",
+            "\"${localProps["PUSHER_KEY"]}\""
+        )
+        buildConfigField(
+            "String",
+            "PUSHER_SECRET",
+            "\"${localProps["PUSHER_SECRET"]}\""
+        )
+        buildConfigField(
+            "String",
+            "PUSHER_API_KEY",
+            "\"${localProps["PUSHER_API_KEY"]}\""
+        )
+        buildConfigField(
+            "String",
+            "PUSHER_CLUSTER",
+            "\"${localProps["PUSHER_CLUSTER"]}\""
+        )
     }
 
     buildTypes {
@@ -55,8 +81,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
     buildFeatures {
         compose = true
@@ -110,4 +138,7 @@ dependencies {
 
     // Ably
     implementation(libs.ably.java)
+
+    // Pusher
+    implementation(libs.pusher.java.client)
 }

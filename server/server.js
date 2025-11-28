@@ -11,7 +11,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
 
 function loadRoutePoints() {
-    const filePath = path.resolve(process.cwd(), 'location_data.txt1');
+    const filePath = path.resolve(process.cwd(), 'location_data.txt');
     try {
         const raw = fs.readFileSync(filePath, 'utf-8');
         return raw
@@ -79,7 +79,7 @@ setInterval(() => {
 
     // 2) Ably & Pusher publish (Android listens here)
     ably.publishMessage(locationData);
-    // pusher.publishMessage(locationData);
+    pusher.publishMessage(locationData);
 
     console.log(`Broadcast point seq=${idx} lng=${lng} lat=${lat}`);
     idx++;

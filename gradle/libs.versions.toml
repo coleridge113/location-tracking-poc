@@ -20,6 +20,7 @@ activityCompose = "1.12.0"
 composeBom = "2025.11.01"
 mapsComposeNdk27 = "11.16.6"
 navigationDynamicFeaturesFragment = "2.9.6"
+pusherJavaClient = "2.4.4"
 
 [libraries]
 ably-java = { module = "io.ably:ably-java", version.ref = "ablyJava" }
@@ -50,6 +51,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 maps-compose-ndk27 = { module = "com.mapbox.extension:maps-compose-ndk27", version.ref = "mapsComposeNdk27" }
 navigationcore-android-ndk27 = { module = "com.mapbox.navigationcore:android-ndk27", version.ref = "androidNdk27Version" }
+pusher-java-client = { module = "com.pusher:pusher-java-client", version.ref = "pusherJavaClient" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "converterGson" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 

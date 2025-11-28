@@ -44,6 +44,7 @@ import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import com.metromart.locationtrackignpoc.BuildConfig
 import com.metromart.locationtrackignpoc.model.LocationData
 import com.metromart.locationtrackignpoc.utils.ably.Ably
+import com.metromart.locationtrackignpoc.utils.pusher.Pusher
 import io.ably.lib.realtime.Channel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -120,7 +121,6 @@ fun NavigationReceiverMapScreen() {
     var isReplaying by remember { mutableStateOf(false) }
     var latestServerTs by remember { mutableStateOf<Long?>(null) }
 
-    // 1) Ably listener: ONLY enqueue and record timestamps
     LaunchedEffect(Unit) {
         val channelName = "ably-channel"
         val listener = Channel.MessageListener { message ->
@@ -145,6 +145,8 @@ fun NavigationReceiverMapScreen() {
         }
 
         Ably.subscribeToChannel(channelName, listener)
+
+        Pusher.subscribe()
     }
 
     // 2) Processor loop: consume bufferedPoints in order and animate
