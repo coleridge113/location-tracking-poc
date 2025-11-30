@@ -19,7 +19,7 @@ fun NavGraphSetup(
     SharedTransitionLayout {
         NavHost(
             navController = navController,
-            startDestination = Routes.AblyScreen,
+            startDestination = Routes.PusherScreen,
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,

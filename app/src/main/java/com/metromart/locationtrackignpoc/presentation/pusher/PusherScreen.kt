@@ -121,30 +121,6 @@ fun NavigationReceiverMapScreen() {
     var latestServerTs by remember { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(Unit) {
-        val channelName = "ably-channel"
-        val listener = Channel.MessageListener { message ->
-            try {
-                val jsonString = message.data.toString()
-                val loc = Gson().fromJson(jsonString, LocationData::class.java)
-
-                Log.d(
-                    "AblyChannel",
-                    "parsed: seq=${loc.seq} lat=${loc.latitude}, lng=${loc.longitude}, ts=${loc.timestamp}"
-                )
-
-                // just enqueue, do not move the puck directly here
-                bufferedPoints += loc
-                latestServerTs = loc.timestamp
-
-                // update lastServerTs to detect gaps
-                lastServerTs = loc.timestamp
-            } catch (t: Throwable) {
-                Log.e("AblyChannel", "Error in message listener", t)
-            }
-        }
-
-        Ably.subscribeToChannel(channelName, listener)
-
         Pusher.subscribe()
     }
 
