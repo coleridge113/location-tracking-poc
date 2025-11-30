@@ -78,7 +78,7 @@ setInterval(() => {
     io.emit('point', locationData);
 
     // 2) Ably & Pusher publish (Android listens here)
-    // ably.publishMessage(locationData);
+    ably.publishMessage(locationData);
     pusher.publishMessage(locationData);
 
     console.log(`Broadcast point seq=${idx} lng=${lng} lat=${lat}`);

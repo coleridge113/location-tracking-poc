@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.gson.Gson
 import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
@@ -35,6 +36,7 @@ import com.mapbox.maps.MapView
 import com.mapbox.maps.plugin.animation.camera
 import com.mapbox.maps.plugin.locationcomponent.createDefault2DPuck
 import com.mapbox.maps.plugin.locationcomponent.location
+import com.mapbox.maps.extension.style.layers.generated.locationIndicatorLayer
 import com.mapbox.navigation.base.ExperimentalPreviewMapboxNavigationAPI
 import com.mapbox.navigation.base.options.NavigationOptions
 import com.mapbox.navigation.core.MapboxNavigationProvider
@@ -53,6 +55,7 @@ import com.mapbox.common.location.Location as MapboxLocation
 
 @Composable
 fun PusherScreen(navController: NavHostController) {
+    val viewModel: PusherViewModel = viewModel()
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(
@@ -82,7 +85,7 @@ fun PusherScreen(navController: NavHostController) {
     }
 
     if (hasPermission) {
-        NavigationReceiverMapScreen()
+        NavigationReceiverMapScreen(viewModel)
     } else {
         Box(Modifier.fillMaxSize()) {
             Button(onClick = {
@@ -95,68 +98,48 @@ fun PusherScreen(navController: NavHostController) {
 @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
 @SuppressLint("VisibleForTests")
 @Composable
-fun NavigationReceiverMapScreen() {
+fun NavigationReceiverMapScreen(viewModel: PusherViewModel) {
     MapboxOptions.accessToken = BuildConfig.MAPBOX_DOWNLOADS_TOKEN
 
     val context = LocalContext.current
     val density = LocalDensity.current
     val realtimeThresholdMs = 2_000L
+
     val mapViewState = remember { mutableStateOf<MapView?>(null) }
     val navigationLocationProvider = remember { NavigationLocationProvider() }
     var viewportDataSource by remember { mutableStateOf<MapboxNavigationViewportDataSource?>(null) }
     var navigationCamera by remember { mutableStateOf<NavigationCamera?>(null) }
 
-    // we only need MapboxNavigation for NavigationCamera & viewport helpers (no replay)
-    val mapboxNavigation = remember {
-        MapboxNavigationProvider.create(
-            NavigationOptions.Builder(context).build()
-        )
-    }
-
     var lastLoc by remember { mutableStateOf<MapboxLocation?>(null) }
-    val uiScope = remember { CoroutineScope(Dispatchers.Main) }
-    val bufferedPoints = remember { mutableStateListOf<LocationData>() }
-    var lastServerTs by remember { mutableStateOf<Long?>(null) }
-    var isReplaying by remember { mutableStateOf(false) }
     var latestServerTs by remember { mutableStateOf<Long?>(null) }
 
+    // 1) Collect from ViewModel's flow and move the provider
     LaunchedEffect(Unit) {
-        Pusher.subscribe()
-    }
+        Log.d("PusherProcessor", "Processor started (VM-based)")
+        viewModel.locations.collect { loc ->
+            Log.d(
+                "PusherProcessor",
+                "processing seq=${loc.seq} lat=${loc.latitude}, lng=${loc.longitude}"
+            )
 
-    // 2) Processor loop: consume bufferedPoints in order and animate
-    LaunchedEffect(Unit) {
-        while (true) {
-            if (bufferedPoints.isEmpty()) {
-                delay(20)
-                continue
-            }
-
-            val loc = bufferedPoints.removeAt(0)
-
+            latestServerTs = loc.timestamp
             val newLoc = MapboxLocation.Builder()
-            .latitude(loc.latitude)
-            .longitude(loc.longitude)
-            .timestamp(loc.timestamp)
-            .build()
+                .latitude(loc.latitude)
+                .longitude(loc.longitude)
+                .timestamp(loc.timestamp)
+                .build()
 
             val from = lastLoc
-
-            // How far behind this point is compared to the latest we've seen
             val behindMs = (latestServerTs ?: loc.timestamp) - loc.timestamp
             val isBacklog = behindMs > realtimeThresholdMs
-
-            // Also detect big jump between lastLoc and this loc (true offline gap)
-            val hasBigGap = lastLoc != null &&
-            (loc.timestamp - (lastLoc?.timestamp ?: loc.timestamp)) > 3_000L
-
-            // If we have *a lot* of backlog (e.g. > 10s), snap instead of animating
             val hugeBacklog = behindMs > 10_000L
+            val hasBigGap = lastLoc != null &&
+                (loc.timestamp - (lastLoc?.timestamp ?: loc.timestamp)) > 3_000L
 
             val (steps, stepDelay) = when {
-                hugeBacklog -> 1 to 0L        // snap through very old data
-                isBacklog || hasBigGap -> 4 to 10L   // fast catch-up
-                else -> 15 to 60L             // normal smooth
+                hugeBacklog -> 1 to 0L
+                isBacklog || hasBigGap -> 4 to 10L
+                else -> 15 to 60L
             }
 
             if (from == null || steps <= 1) {
@@ -178,8 +161,9 @@ fun NavigationReceiverMapScreen() {
         }
     }
 
-    val snrMakati = Point.fromLngLat(121.018857, 14.540726)
-    val initialPoint = snrMakati
+    // 2) MapView setup and binding
+    val initialPoint = Point.fromLngLat(121.01877, 14.540679)
+
     AndroidView(
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
@@ -193,18 +177,13 @@ fun NavigationReceiverMapScreen() {
                 )
 
                 val startLoc = MapboxLocation.Builder()
-                .latitude(initialPoint.latitude())
-                .longitude(initialPoint.longitude())
-                .timestamp(System.currentTimeMillis())
-                .build()
+                    .latitude(initialPoint.latitude())
+                    .longitude(initialPoint.longitude())
+                    .timestamp(System.currentTimeMillis())
+                    .build()
                 navigationLocationProvider.changePosition(startLoc, emptyList())
                 lastLoc = startLoc
 
-                location.apply {
-                    setLocationProvider(navigationLocationProvider)
-                    locationPuck = createDefault2DPuck(withBearing = false)
-                    enabled = true
-                }
                 mapViewState.value = this
 
                 viewportDataSource = MapboxNavigationViewportDataSource(mapboxMap).also { vds ->
@@ -217,20 +196,17 @@ fun NavigationReceiverMapScreen() {
                 navigationCamera = NavigationCamera(mapboxMap, camera, viewportDataSource!!)
             }
         },
-        update = { /* no-op */ }
+        update = { mapView ->
+            mapView.location.apply {
+                setLocationProvider(navigationLocationProvider)
+                locationPuck = createDefault2DPuck(withBearing = false)
+                enabled = true
+            }
+        }
     )
 
     DisposableEffect(Unit) {
-        // ensure puck stays configured with our provider
-        mapViewState.value?.location?.apply {
-            setLocationProvider(navigationLocationProvider)
-            locationPuck = createDefault2DPuck(withBearing = false)
-            enabled = true
-        }
-
         onDispose {
-            // We never started a trip session, so no need to stop it.
-            // Just destroy the shared MapboxNavigation instance.
             MapboxNavigationProvider.destroy()
             mapViewState.value = null
         }

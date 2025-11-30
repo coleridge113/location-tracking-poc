@@ -18,9 +18,11 @@ object Pusher {
         setUseTLS(true)
     }
 
-    val pusher = Pusher(BuildConfig.PUSHER_KEY, options)
+    private val pusher = Pusher(BuildConfig.PUSHER_KEY, options)
 
-    private val listener = object : ConnectionEventListener {
+    private var subscribed = false
+
+    private val connectionListener = object : ConnectionEventListener {
         override fun onConnectionStateChange(change: ConnectionStateChange?) {
             Log.d(
                 TAG,
@@ -34,19 +36,17 @@ object Pusher {
     }
 
     init {
-        Log.d(TAG, "API_KEY: ${BuildConfig.PUSHER_API_KEY}")
-        Log.d(TAG, "Cluster: ${BuildConfig.PUSHER_CLUSTER}")
-        pusher.connect(listener, ConnectionState.ALL)
+        pusher.connect(connectionListener, ConnectionState.ALL)
     }
 
-    fun subscribe() {
-        val channelName = "psher-channel"
-        val eventName = "psher-route"
-
-        val existingChannel = pusher.getChannel(channelName)
-        if (existingChannel != null) {
+    fun subscribe(onEvent: (PusherEvent?) -> Unit) {
+        if (subscribed) {
+            Log.d(TAG, "Already subscribed, reusing existing channel listener")
             return
         }
+
+        val channelName = "psher-channel"
+        val eventName = "psher-route"
 
         pusher.subscribe(
             channelName,
@@ -57,9 +57,12 @@ object Pusher {
 
                 override fun onEvent(event: PusherEvent?) {
                     Log.d(TAG, "Event: ${event?.eventName} data=${event?.data}")
+                    onEvent(event)
                 }
             },
             eventName
         )
+
+        subscribed = true
     }
 }

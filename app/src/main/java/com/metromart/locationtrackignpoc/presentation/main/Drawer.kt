@@ -71,10 +71,16 @@ fun DrawerNavigation() {
                                     scope.launch {
                                         when (item) {
                                             DrawerItems.ABLY -> {
-                                                navController.navigate(Routes.AblyScreen)
+                                                navController.navigate(Routes.AblyScreen) {
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
                                             DrawerItems.PUSHER -> {
-                                                navController.navigate(Routes.PusherScreen)
+                                                navController.navigate(Routes.PusherScreen) {
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
                                             }
                                         }
                                         drawerState.close()
