@@ -8,10 +8,16 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -76,6 +83,7 @@ fun MainScreen() {
         }
     }
 
+
     LaunchedEffect(Unit) {
         if (!hasPermission) {
             permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))
@@ -83,7 +91,7 @@ fun MainScreen() {
     }
 
     if (hasPermission) {
-        NavigationReceiverMapScreen()
+        MainContent()
     } else {
         Box(Modifier.fillMaxSize()) {
             Button(onClick = {
@@ -93,10 +101,42 @@ fun MainScreen() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainContent() {
+    var providerType by remember { mutableStateOf(LocationProviderType.ABLY) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        providerType.value,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        },
+        modifier = Modifier.clickable {
+            providerType = when (providerType) {
+                LocationProviderType.ABLY -> LocationProviderType.PUSHER
+                LocationProviderType.PUSHER -> LocationProviderType.ABLY
+            }
+        }
+    ) { innerPadding ->
+        NavigationReceiverMapScreen(providerType)
+
+    }
+    
+}
+
 @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
 @SuppressLint("VisibleForTests")
 @Composable
-fun NavigationReceiverMapScreen() {
+fun NavigationReceiverMapScreen(providerType: LocationProviderType) {
     MapboxOptions.accessToken = BuildConfig.MAPBOX_DOWNLOADS_TOKEN
 
     val context = LocalContext.current
@@ -121,32 +161,82 @@ fun NavigationReceiverMapScreen() {
     var isReplaying by remember { mutableStateOf(false) }
     var latestServerTs by remember { mutableStateOf<Long?>(null) }
 
-    LaunchedEffect(Unit) {
-        val channelName = "ably-channel"
-        val listener = Channel.MessageListener { message ->
+    LaunchedEffect(providerType) {
+        val ablyChannelName = "ably-channel"
+        val pusherChannelName = "psher-channel"
+
+        var ablyChannel: io.ably.lib.realtime.Channel? = null
+        var ablyListener: Channel.MessageListener? = null
+        var pusherChannel: com.pusher.client.channel.Channel? = null
+
+        try {
+            when (providerType) {
+                LocationProviderType.ABLY -> {
+                    val listener = Channel.MessageListener { message ->
+                        try {
+                            val jsonString = message.data.toString()
+                            val loc = Gson().fromJson(jsonString, LocationData::class.java)
+
+                            Log.d(
+                                "AblyChannel",
+                                "parsed: seq=${loc.seq} lat=${loc.latitude}, lng=${loc.longitude}, ts=${loc.timestamp}"
+                            )
+
+                            bufferedPoints += loc
+                            latestServerTs = loc.timestamp
+                            lastServerTs = loc.timestamp
+                        } catch (t: Throwable) {
+                            Log.e("AblyChannel", "Error in message listener", t)
+                        }
+                    }
+                    ablyChannel = Ably.realtime.channels.get(ablyChannelName)
+                    ablyListener = listener
+                    ablyChannel?.subscribe(listener)
+                }
+
+                LocationProviderType.PUSHER -> {
+                    pusherChannel = Pusher.subscribe { event ->
+                        try {
+                            val jsonString = event?.data.toString()
+                            val loc = Gson().fromJson(jsonString, LocationData::class.java)
+
+                            Log.d(
+                                "PusherChannel",
+                                "parsed: seq=${loc.seq} lat=${loc.latitude}, lng=${loc.longitude}, ts=${loc.timestamp}"
+                            )
+
+                            bufferedPoints += loc
+                            latestServerTs = loc.timestamp
+                            lastServerTs = loc.timestamp
+                        } catch (t: Throwable) {
+                            Log.e("PusherChannel", "Error in event listener", t)
+                        }
+                    }
+                }
+            }
+
+            // Keep this effect alive until providerType changes
+            // (LaunchedEffect will cancel when key changes)
+            while (true) {
+                delay(60_000L)
+            }
+        } finally {
             try {
-                val jsonString = message.data.toString()
-                val loc = Gson().fromJson(jsonString, LocationData::class.java)
-
-                Log.d(
-                    "AblyChannel",
-                    "parsed: seq=${loc.seq} lat=${loc.latitude}, lng=${loc.longitude}, ts=${loc.timestamp}"
-                )
-
-                // just enqueue, do not move the puck directly here
-                bufferedPoints += loc
-                latestServerTs = loc.timestamp
-
-                // update lastServerTs to detect gaps
-                lastServerTs = loc.timestamp
+                ablyChannel?.let { ch ->
+                    ablyListener?.let { lst -> ch.unsubscribe(lst) }
+                }
             } catch (t: Throwable) {
-                Log.e("AblyChannel", "Error in message listener", t)
+                Log.e("AblyChannel", "Error unsubscribing", t)
+            }
+
+            try {
+                pusherChannel?.let { ch ->
+                    Pusher.pusher.unsubscribe(ch.name)
+                }
+            } catch (t: Throwable) {
+                Log.e("PusherChannel", "Error unsubscribing", t)
             }
         }
-
-        Ably.subscribeToChannel(channelName, listener)
-
-        Pusher.subscribe()
     }
 
     // 2) Processor loop: consume bufferedPoints in order and animate
@@ -279,4 +369,9 @@ private suspend fun animateBetween(
         provider.changePosition(stepLoc, emptyList())
         kotlinx.coroutines.delay(stepDelayMs)
     }
+}
+
+enum class LocationProviderType(val value: String) {
+    ABLY("Ably"),
+    PUSHER("Pusher")
 }

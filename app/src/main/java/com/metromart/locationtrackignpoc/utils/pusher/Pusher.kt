@@ -17,10 +17,9 @@ object Pusher {
     private val options = PusherOptions().apply {
         setCluster(BuildConfig.PUSHER_CLUSTER)
         setUseTLS(true)
-        setHost("ws-${BuildConfig.PUSHER_CLUSTER}.pusher.com")
     }
 
-    val pusher = Pusher(BuildConfig.PUSHER_API_KEY, options)
+    val pusher = Pusher(BuildConfig.PUSHER_KEY, options)
     private val listener = object : ConnectionEventListener {
         override fun onConnectionStateChange(change: ConnectionStateChange?) {
             Log.d(
@@ -35,18 +34,16 @@ object Pusher {
     }
 
     init {
-        Log.d(TAG, "API_KEY: ${BuildConfig.PUSHER_API_KEY}")
-        Log.d(TAG, "Cluster: ${BuildConfig.PUSHER_CLUSTER}")
-        Log.d(TAG, "Host: ws-${BuildConfig.PUSHER_CLUSTER}.pusher.com")
-
         pusher.connect(listener, ConnectionState.ALL)
     }
 
-    fun subscribe() {
+    fun subscribe(
+        onEvent: (PusherEvent?) -> Unit
+    ): Channel {
         val channelName = "psher-channel"
         val eventName = "psher-route"
 
-        pusher.subscribe(
+        val channel = pusher.subscribe(
             channelName,
             object : ChannelEventListener {
                 override fun onSubscriptionSucceeded(channelName: String?) {
@@ -55,10 +52,12 @@ object Pusher {
 
                 override fun onEvent(event: PusherEvent?) {
                     Log.d(TAG, "Event: ${event?.eventName} data=${event?.data}")
+                    onEvent(event)
                 }
             },
             eventName
         )
+        return channel
     }
 
     fun trigger() {
