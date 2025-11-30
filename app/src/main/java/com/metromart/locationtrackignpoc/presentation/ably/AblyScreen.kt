@@ -1,8 +1,7 @@
-package com.metromart.locationtrackignpoc.presentation.main
+package com.metromart.locationtrackignpoc.presentation.ably
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
@@ -26,6 +25,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavHostController
 import com.google.gson.Gson
 import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
@@ -43,17 +43,17 @@ import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSou
 import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import com.metromart.locationtrackignpoc.BuildConfig
 import com.metromart.locationtrackignpoc.model.LocationData
+import com.metromart.locationtrackignpoc.presentation.pusher.NavigationReceiverMapScreen
 import com.metromart.locationtrackignpoc.utils.ably.Ably
 import com.metromart.locationtrackignpoc.utils.pusher.Pusher
 import io.ably.lib.realtime.Channel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import com.mapbox.common.location.Location as MapboxLocation
 
 @Composable
-fun MainScreen() {
+fun AblyScreen(navController: NavHostController) {
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(
@@ -145,8 +145,6 @@ fun NavigationReceiverMapScreen() {
         }
 
         Ably.subscribeToChannel(channelName, listener)
-
-        Pusher.subscribe()
     }
 
     // 2) Processor loop: consume bufferedPoints in order and animate
@@ -254,7 +252,8 @@ fun NavigationReceiverMapScreen() {
         }
 
         onDispose {
-            mapboxNavigation.stopTripSession()
+            // We never started a trip session, so no need to stop it.
+            // Just destroy the shared MapboxNavigation instance.
             MapboxNavigationProvider.destroy()
             mapViewState.value = null
         }

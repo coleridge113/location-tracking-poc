@@ -1,5 +1,5 @@
 [versions]
-ablyJava = "1.4.2"
+ablyJava = "1.5.0"
 agp = "8.13.1"
 androidNdk27 = "11.16.6"
 androidNdk27Version = "3.17.0-rc.1"
@@ -19,12 +19,15 @@ lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.0"
 composeBom = "2025.11.01"
 mapsComposeNdk27 = "11.16.6"
+materialIconsCore = "1.7.8"
 navigationDynamicFeaturesFragment = "2.9.6"
 pusherJavaClient = "2.4.4"
 
 [libraries]
 ably-java = { module = "io.ably:ably-java", version.ref = "ablyJava" }
 android-ndk27 = { module = "com.mapbox.maps:android-ndk27", version.ref = "androidNdk27" }
+androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core", version.ref = "materialIconsCore" }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsCore" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationDynamicFeaturesFragment" }
 androidx-navigation-dynamic-features-fragment = { module = "androidx.navigation:navigation-dynamic-features-fragment", version.ref = "navigationDynamicFeaturesFragment" }

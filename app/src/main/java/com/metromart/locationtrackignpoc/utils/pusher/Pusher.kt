@@ -45,7 +45,10 @@ object Pusher {
     fun subscribe() {
         val channelName = "psher-channel"
         val eventName = "psher-route"
-
+        val existingChannel = pusher.getChannel(channelName) 
+        if (existingChannel != null) {
+            return 
+        }
         pusher.subscribe(
             channelName,
             object : ChannelEventListener {

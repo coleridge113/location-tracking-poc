@@ -5,6 +5,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed class Routes {
     @Serializable
-    data object MainRoute : Routes()
+    data object AblyScreen : Routes()
+
+    @Serializable
+    data object PusherScreen : Routes()
 }
 

@@ -8,7 +8,8 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.composable
-import com.metromart.locationtrackignpoc.presentation.main.MainScreen
+import com.metromart.locationtrackignpoc.presentation.ably.AblyScreen
+import com.metromart.locationtrackignpoc.presentation.pusher.PusherScreen
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -18,7 +19,7 @@ fun NavGraphSetup(
     SharedTransitionLayout {
         NavHost(
             navController = navController,
-            startDestination = Routes.MainRoute,
+            startDestination = Routes.AblyScreen,
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -44,8 +45,15 @@ fun NavGraphSetup(
                 )
             }
         ) {
-            composable<Routes.MainRoute> {
-                MainScreen()
+            composable<Routes.AblyScreen> {
+                AblyScreen( 
+                    navController = navController
+                )
+            }
+            composable<Routes.PusherScreen> {
+                PusherScreen(
+                    navController = navController
+                )
             }
         } 
     }
