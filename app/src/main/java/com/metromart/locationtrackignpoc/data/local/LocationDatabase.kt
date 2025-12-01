@@ -3,9 +3,10 @@ package com.metromart.locationtrackignpoc.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.metromart.locationtrackignpoc.data.local.dao.LocationDao
+import com.metromart.locationtrackignpoc.data.local.entity.LocationEntity
 
 @Database(
-    entities = [LocationDao::class],
+    entities = [LocationEntity::class],
     version = 1,
     exportSchema = false
 )

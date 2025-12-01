@@ -50,6 +50,7 @@ import com.mapbox.navigation.ui.maps.camera.NavigationCamera
 import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
 import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import com.metromart.locationtrackignpoc.BuildConfig
+import com.metromart.locationtrackignpoc.data.local.repository.LocalRepository
 import com.metromart.locationtrackignpoc.model.LocationData
 import com.metromart.locationtrackignpoc.utils.ably.Ably
 import com.metromart.locationtrackignpoc.utils.pusher.Pusher
@@ -59,6 +60,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.mapbox.common.location.Location as MapboxLocation
+import org.koin.compose.koinInject
 
 @Composable
 fun MainScreen() {
@@ -130,7 +132,7 @@ fun MainContent() {
     ) { innerPadding ->
         NavigationReceiverMapScreen(
             modifier = Modifier.padding(innerPadding),
-            providerType
+            providerType = providerType
         )
 
     }
@@ -142,7 +144,8 @@ fun MainContent() {
 @Composable
 fun NavigationReceiverMapScreen(
     modifier: Modifier = Modifier,
-    providerType: LocationProviderType
+    providerType: LocationProviderType,
+    repository: LocalRepository = koinInject()
 ) {
     MapboxOptions.accessToken = BuildConfig.MAPBOX_DOWNLOADS_TOKEN
 
