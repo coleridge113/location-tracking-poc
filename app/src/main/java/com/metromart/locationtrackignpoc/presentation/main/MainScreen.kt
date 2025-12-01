@@ -50,6 +50,7 @@ import com.mapbox.navigation.ui.maps.camera.NavigationCamera
 import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
 import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
 import com.metromart.locationtrackignpoc.BuildConfig
+import com.metromart.locationtrackignpoc.data.local.entity.LocationEntity
 import com.metromart.locationtrackignpoc.data.local.repository.LocalRepository
 import com.metromart.locationtrackignpoc.model.LocationData
 import com.metromart.locationtrackignpoc.utils.ably.Ably
@@ -218,6 +219,18 @@ fun NavigationReceiverMapScreen(
                             bufferedPoints += loc
                             latestServerTs = loc.timestamp
                             lastServerTs = loc.timestamp
+
+                            uiScope.launch {
+                                repository.insertLocationData(
+                                    LocationEntity(
+                                        type = loc.type,
+                                        seq = loc.seq,
+                                        latitude = loc.latitude,
+                                        longitude = loc.longitude,
+                                        timestamp = loc.timestamp
+                                    )
+                                )
+                            }
                         } catch (t: Throwable) {
                             Log.e("PusherChannel", "Error in event listener", t)
                         }
@@ -385,3 +398,4 @@ enum class LocationProviderType(val value: String) {
     ABLY("Ably"),
     PUSHER("Pusher")
 }
+

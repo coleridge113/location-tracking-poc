@@ -10,7 +10,7 @@ interface LocationDao {
     @Insert
     suspend fun insertLocationData(data: LocationEntity)
 
-    @Query("SELECT * FROM location")
+    @Query("SELECT * FROM location ORDER BY timestamp ASC")
     suspend fun getLocationData(): List<LocationEntity>
 
 }
