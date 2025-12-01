@@ -8,7 +8,8 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.composable
-import com.metromart.locationtrackignpoc.presentation.main.MainScreen
+import com.metromart.locationtrackignpoc.presentation.main.MainRoute
+import com.metromart.locationtrackignpoc.presentation.permissions.PermissionsRoute
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -44,8 +45,11 @@ fun NavGraphSetup(
                 )
             }
         ) {
+            composable<Routes.PermissionsRoute> {
+                PermissionsRoute(navController = navController)
+            }
             composable<Routes.MainRoute> {
-                MainScreen()
+                MainRoute()
             }
         } 
     }

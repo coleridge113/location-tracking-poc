@@ -2,7 +2,6 @@ package com.metromart.locationtrackignpoc.presentation.main
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.pm.PackageManager
 import android.util.Log
 import android.widget.Toast
@@ -28,7 +27,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -64,7 +62,7 @@ import com.mapbox.common.location.Location as MapboxLocation
 import org.koin.compose.koinInject
 
 @Composable
-fun MainScreen() {
+fun MainRoute() {
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(
