@@ -1,17 +1,10 @@
 package com.metromart.locationtrackignpoc.presentation.main
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.content.pm.PackageManager
 import android.util.Log
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -31,7 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
+import androidx.navigation.NavController
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.gson.Gson
 import com.mapbox.common.MapboxOptions
 import com.mapbox.geojson.Point
@@ -58,62 +53,27 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.mapbox.common.location.Location as MapboxLocation
 import org.koin.compose.koinInject
+import com.mapbox.common.location.Location as MapboxLocation
 
-@Composable
-fun MainRoute() {
-    val context = LocalContext.current
-    var hasPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { perms ->
-        hasPermission = perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (!hasPermission) {
-            Toast.makeText(
-                context,
-                "Location permission denied. Enable it in settings.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
-
-
-    LaunchedEffect(Unit) {
-        if (!hasPermission) {
-            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))
-        }
-    }
-
-    if (hasPermission) {
-        MainContent()
-    } else {
-        Box(Modifier.fillMaxSize()) {
-            Button(onClick = {
-                permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))
-            }) { Text("Grant location permission") }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainContent() {
-    var providerType by remember { mutableStateOf(LocationProviderType.ABLY) }
+fun MainRoute(
+    viewModel: MainViewModel,
+    navController: NavController
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var messagingProvider by remember { mutableStateOf(uiState.messagingProvider) }
+
+    val onEvent = remember(viewModel) { viewModel::onEvent }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        providerType.value,
+                        messagingProvider.value,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 },
@@ -123,15 +83,12 @@ fun MainContent() {
             )
         },
         modifier = Modifier.clickable {
-            providerType = when (providerType) {
-                LocationProviderType.ABLY -> LocationProviderType.PUSHER
-                LocationProviderType.PUSHER -> LocationProviderType.ABLY
-            }
+            onEvent(MainViewModelStateEvent.Event.ToggleProvider)
         }
     ) { innerPadding ->
-        NavigationReceiverMapScreen(
+        MainScreen(
             modifier = Modifier.padding(innerPadding),
-            providerType = providerType
+            messagingProvider = messagingProvider
         )
 
     }
@@ -141,9 +98,9 @@ fun MainContent() {
 @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
 @SuppressLint("VisibleForTests")
 @Composable
-fun NavigationReceiverMapScreen(
+fun MainScreen(
     modifier: Modifier = Modifier,
-    providerType: LocationProviderType,
+    messagingProvider: String,
     repository: LocalRepository = koinInject()
 ) {
     MapboxOptions.accessToken = BuildConfig.MAPBOX_DOWNLOADS_TOKEN
@@ -170,16 +127,15 @@ fun NavigationReceiverMapScreen(
     var isReplaying by remember { mutableStateOf(false) }
     var latestServerTs by remember { mutableStateOf<Long?>(null) }
 
-    LaunchedEffect(providerType) {
+    LaunchedEffect(messagingProvider) {
         val ablyChannelName = "ably-channel"
-        val pusherChannelName = "psher-channel"
 
         var ablyChannel: io.ably.lib.realtime.Channel? = null
         var ablyListener: Channel.MessageListener? = null
         var pusherChannel: com.pusher.client.channel.Channel? = null
 
         try {
-            when (providerType) {
+            when (messagingProvider) {
                 LocationProviderType.ABLY -> {
                     val listener = Channel.MessageListener { message ->
                         try {

@@ -9,6 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import com.metromart.locationtrackignpoc.data.local.LocationDatabase
 import com.metromart.locationtrackignpoc.data.local.repository.LocalRepository
 import com.metromart.locationtrackignpoc.data.local.repository.LocalRepositoryImpl
+import com.metromart.locationtrackignpoc.presentation.main.MainViewModel
 
 val appModule = module {
     single {
@@ -23,5 +24,8 @@ val appModule = module {
     }
     single<LocalRepository> {
         LocalRepositoryImpl(get())
+    }
+    viewModel { 
+        MainViewModel(get<LocalRepository>()) 
     }
 }

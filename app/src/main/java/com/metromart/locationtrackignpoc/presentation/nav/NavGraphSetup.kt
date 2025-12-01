@@ -9,7 +9,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.composable
 import com.metromart.locationtrackignpoc.presentation.main.MainRoute
+import com.metromart.locationtrackignpoc.presentation.main.MainViewModel
 import com.metromart.locationtrackignpoc.presentation.permissions.PermissionsRoute
+import org.koin.compose.koinInject
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -49,7 +52,11 @@ fun NavGraphSetup(
                 PermissionsRoute(navController = navController)
             }
             composable<Routes.MainRoute> {
-                MainRoute()
+                val viewModel: MainViewModel = koinViewModel()
+                MainRoute(
+                    viewModel = viewModel,
+                    navController = navController,
+                )
             }
         } 
     }
