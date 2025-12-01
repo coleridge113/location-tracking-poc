@@ -5,10 +5,13 @@ import fs from 'fs';
 import path from 'path';
 import * as ably from './utils/ably.js';
 import * as pusher from './utils/pusher.js';
+import pusherAuthRouter from './router.js'
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
+
+app.use('/pusher', pusherAuthRouter)
 
 function loadRoutePoints() {
     const filePath = path.resolve(process.cwd(), 'location_data.txt');

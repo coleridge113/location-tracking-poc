@@ -21,6 +21,7 @@ composeBom = "2025.11.01"
 mapsComposeNdk27 = "11.16.6"
 navigationDynamicFeaturesFragment = "2.9.6"
 pusherJavaClient = "2.4.4"
+roomKtx = "2.8.4"
 
 [libraries]
 ably-java = { module = "io.ably:ably-java", version.ref = "ablyJava" }
@@ -54,6 +55,7 @@ navigationcore-android-ndk27 = { module = "com.mapbox.navigationcore:android-ndk
 pusher-java-client = { module = "com.pusher:pusher-java-client", version.ref = "pusherJavaClient" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "converterGson" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

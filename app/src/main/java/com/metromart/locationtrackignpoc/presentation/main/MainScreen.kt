@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -127,7 +128,10 @@ fun MainContent() {
             }
         }
     ) { innerPadding ->
-        NavigationReceiverMapScreen(providerType)
+        NavigationReceiverMapScreen(
+            modifier = Modifier.padding(innerPadding),
+            providerType
+        )
 
     }
     
@@ -136,7 +140,10 @@ fun MainContent() {
 @OptIn(ExperimentalPreviewMapboxNavigationAPI::class)
 @SuppressLint("VisibleForTests")
 @Composable
-fun NavigationReceiverMapScreen(providerType: LocationProviderType) {
+fun NavigationReceiverMapScreen(
+    modifier: Modifier = Modifier,
+    providerType: LocationProviderType
+) {
     MapboxOptions.accessToken = BuildConfig.MAPBOX_DOWNLOADS_TOKEN
 
     val context = LocalContext.current
