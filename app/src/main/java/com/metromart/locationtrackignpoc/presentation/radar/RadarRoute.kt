@@ -2,6 +2,7 @@ package com.metromart.locationtrackignpoc.presentation.radar
 
 import android.location.Location
 import android.util.Log
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -11,7 +12,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalContext
 import io.radar.sdk.Radar
+import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapView
+import org.maplibre.android.maps.Style
+import org.maplibre.android.MapLibre
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,4 +61,17 @@ fun MainContent(modifier: Modifier = Modifier) {
         3) { status, location, events, user ->
             Log.d("Radar", "Output: $status, $location, $events, $user")
         }
+
+    val context = LocalContext.current
+    AndroidView(
+        factory = { ctx ->
+            MapLibre.getInstance(ctx)
+            MapView(ctx).apply {
+                getMapAsync { map ->
+                    map.setStyle("https://demotiles.maplibre.org/style.json")
+                }
+            } 
+        },
+        modifier = Modifier.fillMaxSize()
+    )
 }

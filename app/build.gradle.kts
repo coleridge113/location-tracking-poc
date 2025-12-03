@@ -161,9 +161,15 @@ dependencies {
     // Radar
     implementation(libs.sdk)
 
+    // MapLibre
+    implementation(libs.android.sdk )
+    implementation(libs.android.plugin.annotation.v9)
+
     // Desugaring
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     // Google Play Services Location
+    implementation(libs.firebase.messaging)
     implementation(libs.play.services.location)
+
 }
