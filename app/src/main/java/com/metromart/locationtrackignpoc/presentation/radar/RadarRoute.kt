@@ -1,7 +1,9 @@
 package com.metromart.locationtrackignpoc.presentation.radar
 
+import org.maplibre.android.camera.CameraPosition
 import android.location.Location
 import android.util.Log
+import android.view.Gravity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,7 +21,9 @@ import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.MapLibre
+import org.maplibre.android.MapLibre.getPredefinedStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,19 +62,35 @@ fun MainContent(modifier: Modifier = Modifier) {
         destination,
         Radar.RadarRouteMode.CAR,
         10,
-        3) { status, location, events, user ->
-            Log.d("Radar", "Output: $status, $location, $events, $user")
-        }
+        3
+    ) { status, location, events, user ->
+        Log.d("Radar", "Output: $status, $location, $events, $user")
+    }
 
-    val context = LocalContext.current
+    val point = LatLng().apply {
+        latitude = 14.540678
+        longitude = 121.01877
+
+    }
     AndroidView(
         factory = { ctx ->
             MapLibre.getInstance(ctx)
             MapView(ctx).apply {
                 getMapAsync { map ->
                     map.setStyle("https://demotiles.maplibre.org/style.json")
-                }
-            } 
+                    // map.setStyle(getPredefinedStyle("Streets"))
+                    map.uiSettings.apply {
+                        isLogoEnabled = false
+                        attributionGravity = Gravity.END + Gravity.BOTTOM
+                        setAttributionMargins(0, 0, 24, 24)
+                    }
+
+                    map.cameraPosition = CameraPosition.Builder()
+                        .target(point)
+                        .zoom(11.0)
+                        .build()
+                } 
+            }
         },
         modifier = Modifier.fillMaxSize()
     )
