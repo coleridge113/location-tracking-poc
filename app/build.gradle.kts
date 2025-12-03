@@ -66,6 +66,16 @@ android {
             "PUSHER_CLUSTER",
             "\"${localProps["PUSHER_CLUSTER"]}\""
         )
+        buildConfigField(
+            "String",
+            "RADAR_TEST_SECRET",
+            "\"${localProps["RADAR_TEST_SECRET"]}\""
+        )
+        buildConfigField(
+            "String",
+            "RADAR_TEST_PUBLISHABLE",
+            "\"${localProps["RADAR_TEST_PUBLISHABLE"]}\""
+        )
     }
 
     buildTypes {
@@ -80,6 +90,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlin {
         compilerOptions {
@@ -146,4 +157,13 @@ dependencies {
 
     // Pusher
     implementation(libs.pusher.java.client)
+
+    // Radar
+    implementation(libs.sdk)
+
+    // Desugaring
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+
+    // Google Play Services Location
+    implementation(libs.play.services.location)
 }

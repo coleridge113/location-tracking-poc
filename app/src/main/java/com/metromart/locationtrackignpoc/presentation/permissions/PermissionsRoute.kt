@@ -20,11 +20,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.metromart.locationtrackignpoc.presentation.nav.Routes
+import io.radar.sdk.Radar
 
 @Composable
 fun PermissionsRoute(navController: NavController) {
     val context = LocalContext.current
-    var hasPermission by remember {
+    val foregroundLocationPermissionsRequestCode = 1
+    val backgroundLocationPermissionsRequestCode = 2
+
+    var hasCoarsePermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
                 context, Manifest.permission.ACCESS_COARSE_LOCATION
@@ -35,8 +39,8 @@ fun PermissionsRoute(navController: NavController) {
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
-        hasPermission = perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (!hasPermission) {
+        hasCoarsePermission = perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (!hasCoarsePermission) {
             Toast.makeText(
                 context,
                 "Location permission denied. Enable it in settings.",
@@ -47,12 +51,12 @@ fun PermissionsRoute(navController: NavController) {
 
 
     LaunchedEffect(Unit) {
-        if (!hasPermission) {
+        if (!hasCoarsePermission) {
             permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION))
         }
     }
 
-    if (hasPermission) {
+    if (hasCoarsePermission) {
         navController.navigate(Routes.MainRoute)
     } else {
         Box(Modifier.fillMaxSize()) {

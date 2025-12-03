@@ -4,6 +4,7 @@ agp = "8.13.1"
 androidNdk27 = "11.16.6"
 androidNdk27Version = "3.17.0-rc.1"
 converterGson = "3.0.0"
+desugar_jdk_libs = "2.1.5"
 koinAndroid = "4.1.1"
 koinAndroidxCompose = "4.1.1"
 kotlinxSerializationJson = "1.9.0"
@@ -20,9 +21,11 @@ activityCompose = "1.12.0"
 composeBom = "2025.11.01"
 mapsComposeNdk27 = "11.16.6"
 navigationDynamicFeaturesFragment = "2.9.6"
+playServicesLocation = "21.3.0"
 pusherJavaClient = "2.4.4"
 roomCompiler = "2.8.4"
 roomKtx = "2.8.4"
+sdk = "3.24.0"
 
 [libraries]
 ably-java = { module = "io.ably:ably-java", version.ref = "ablyJava" }
@@ -35,6 +38,7 @@ androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx",
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "roomCompiler" }
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
+desugar_jdk_libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar_jdk_libs" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -55,10 +59,12 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 maps-compose-ndk27 = { module = "com.mapbox.extension:maps-compose-ndk27", version.ref = "mapsComposeNdk27" }
 navigationcore-android-ndk27 = { module = "com.mapbox.navigationcore:android-ndk27", version.ref = "androidNdk27Version" }
+play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
 pusher-java-client = { module = "com.pusher:pusher-java-client", version.ref = "pusherJavaClient" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "converterGson" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
+sdk = { module = "io.radar:sdk", version.ref = "sdk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
