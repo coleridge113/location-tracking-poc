@@ -9,5 +9,8 @@ sealed class Routes {
 
     @Serializable
     data object PermissionsRoute : Routes()
+
+    @Serializable
+    data object RadarRoute : Routes()
 }
 

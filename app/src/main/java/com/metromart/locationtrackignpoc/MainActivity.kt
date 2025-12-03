@@ -10,7 +10,9 @@ import androidx.activity.compose.setContent
 import androidx.core.app.ActivityCompat
 import androidx.navigation.compose.rememberNavController
 import com.metromart.locationtrackignpoc.presentation.nav.NavGraphSetup
+import com.metromart.locationtrackignpoc.presentation.radar.MyRadarReceiver
 import io.radar.sdk.Radar
+import io.radar.sdk.RadarInitializeOptions
 
 class MainActivity : ComponentActivity() {
     private val foregroundLocationPermissionsRequestCode = 1
@@ -18,9 +20,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Radar.initialize(this, BuildConfig.RADAR_TEST_PUBLISHABLE)
-        requestLocationPermissions()
 
+        val receiver = MyRadarReceiver()
+
+        Radar.initialize(
+            this,
+            BuildConfig.RADAR_TEST_PUBLISHABLE, 
+            RadarInitializeOptions(
+                radarReceiver = receiver, 
+                locationProvider = Radar.RadarLocationServicesProvider.GOOGLE
+            )
+        )
+
+        requestLocationPermissions()
         setContent { 
             val navController = rememberNavController()
             NavGraphSetup(navController = navController) 

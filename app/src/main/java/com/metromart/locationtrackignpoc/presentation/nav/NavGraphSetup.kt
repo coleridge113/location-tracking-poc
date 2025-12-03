@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.composable
 import com.metromart.locationtrackignpoc.presentation.main.MainRoute
 import com.metromart.locationtrackignpoc.presentation.permissions.PermissionsRoute
+import com.metromart.locationtrackignpoc.presentation.radar.RadarRoute
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -19,7 +20,7 @@ fun NavGraphSetup(
     SharedTransitionLayout {
         NavHost(
             navController = navController,
-            startDestination = Routes.MainRoute,
+            startDestination = Routes.RadarRoute,
             enterTransition = {
                 slideIntoContainer(
                     AnimatedContentTransitionScope.SlideDirection.Left,
@@ -50,6 +51,9 @@ fun NavGraphSetup(
             }
             composable<Routes.MainRoute> {
                 MainRoute()
+            }
+            composable<Routes.RadarRoute> {
+                RadarRoute()
             }
         } 
     }

@@ -125,7 +125,8 @@ fun MainContent() {
         modifier = Modifier.clickable {
             providerType = when (providerType) {
                 LocationProviderType.ABLY -> LocationProviderType.PUSHER
-                LocationProviderType.PUSHER -> LocationProviderType.ABLY
+                LocationProviderType.PUSHER -> LocationProviderType.RADAR
+                LocationProviderType.RADAR -> LocationProviderType.ABLY
             }
         }
     ) { innerPadding ->
@@ -234,6 +235,8 @@ fun NavigationReceiverMapScreen(
                         }
                     }
                 }
+
+                LocationProviderType.RADAR -> {}
             }
 
             // Keep this effect alive until providerType changes
@@ -394,6 +397,7 @@ private suspend fun animateBetween(
 
 enum class LocationProviderType(val value: String) {
     ABLY("Ably"),
-    PUSHER("Pusher")
+    PUSHER("Pusher"),
+    RADAR("Radar")
 }
 
