@@ -90,7 +90,7 @@ fun MainContent(modifier: Modifier = Modifier) {
             destination,
             Radar.RadarRouteMode.CAR,
             1,
-            3
+            1
         ) { status, location, events, user ->
             Log.d("LaunchedEffect", "Output: $status, $location, $events, $user")
             location?.let {
@@ -113,9 +113,9 @@ fun MainContent(modifier: Modifier = Modifier) {
                 }
 
                 map.cameraPosition = CameraPosition.Builder()
-                .target(point.toPoint())
-                .zoom(16.0)
-                .build()
+                    .target(point.toPoint())
+                    .zoom(16.0)
+                    .build()
 
                 val sm = SymbolManager(mapView, map, style)
                 symbolManager = sm
@@ -132,7 +132,7 @@ fun MainContent(modifier: Modifier = Modifier) {
 
     AndroidView(
         factory = { mapView },
-        update = {  },
+        update = { CameraUpdateFactory.newLatLng(point.toPoint()) },
         modifier = Modifier.fillMaxSize()
     )
 
@@ -144,6 +144,10 @@ fun MainContent(modifier: Modifier = Modifier) {
                 sm.update(s)
             }
         }
+        mapLibreMap?.animateCamera(
+            CameraUpdateFactory.newLatLng(point.toPoint()),
+            2500
+        )
     }
 }
 
